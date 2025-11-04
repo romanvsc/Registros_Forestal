@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "fecha": "2025-11-01",
+    "detalle": "Compra de materiales",
+    "frenteId": 1,
+    "ruc": "20123456789",
+    "numeroFactura": "001-001-00000001",
+    "monto": 1500.50,
+    "sincronizado": true
+  }
+]

@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "nombre": "Frente Norte",
+    "descripcion": "Zona norte del bosque",
+    "activo": true
+  },
+  {
+    "id": 2,
+    "nombre": "Frente Sur",
+    "descripcion": "Zona sur del bosque",
+    "activo": true
+  }
+]

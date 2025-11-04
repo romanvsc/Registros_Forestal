@@ -1,0 +1,33 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+
+# Editor and system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Cache and temp files
+.cache/
+*.tmp
+
+# Tailwind backups (por si los creás)
+tailwind.config.backup.js
+
+# Generated manifest/service workers (en caso de PWA)
+manifest.webmanifest
+service-worker.js
