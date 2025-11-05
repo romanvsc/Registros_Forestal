@@ -17,6 +17,7 @@ export default {
         },
         'golden-fizz': {
           50: '#ffff44',
+          100: '#121200',
         },
       },
     },

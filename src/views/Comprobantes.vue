@@ -22,6 +22,14 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 py-6">
+      <!-- Indicador de estado de conexión -->
+      <div v-if="!isOnline" class="alert-warning mb-4">
+        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path>
+        </svg>
+        Sin conexión - Los comprobantes se guardarán localmente
+      </div>
+
       <!-- Filtro por Frente -->
       <div class="mb-6">
         <label class="block text-sm font-semibold text-gray-700 mb-2">Filtrar por Frente</label>
@@ -79,11 +87,17 @@
 
       <!-- Botón Sincronizar -->
       <div v-if="comprobantesNoSincronizados > 0" class="mt-6">
-        <button @click="sincronizar" class="btn-primary w-full flex items-center justify-center space-x-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button 
+          @click="sincronizar" 
+          :disabled="syncing || !isOnline"
+          class="btn-primary w-full flex items-center justify-center space-x-2"
+          :class="{ 'opacity-50 cursor-not-allowed': syncing || !isOnline }"
+        >
+          <svg class="w-5 h-5" :class="{ 'animate-spin': syncing }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
-          <span>Sincronizar {{ comprobantesNoSincronizados }} comprobante(s)</span>
+          <span v-if="syncing">Sincronizando...</span>
+          <span v-else>Sincronizar {{ comprobantesNoSincronizados }} comprobante(s)</span>
         </button>
       </div>
     </main>
@@ -227,12 +241,27 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Resultado Sincronización -->
+    <div v-if="showSyncResult" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Resultado de Sincronización</h2>
+        <div class="space-y-2">
+          <p class="text-green-600">✓ Sincronizados: {{ syncResult.success }}</p>
+          <p v-if="syncResult.errors > 0" class="text-red-600">✗ Errores: {{ syncResult.errors }}</p>
+        </div>
+        <button @click="showSyncResult = false" class="btn-primary w-full mt-4">
+          Cerrar
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import AirtableService from '../services/airtable.js'
 
 export default {
   name: 'ComprobantesView',
@@ -242,9 +271,13 @@ export default {
     const frentes = ref([])
     const showModal = ref(false)
     const showDeleteModal = ref(false)
+    const showSyncResult = ref(false)
     const comprobanteToDelete = ref(null)
     const errorMessage = ref('')
     const filtroFrente = ref('')
+    const isOnline = ref(navigator.onLine)
+    const syncing = ref(false)
+    const syncResult = ref({ success: 0, errors: 0 })
     
     const facturaParte1 = ref('')
     const facturaParte2 = ref('')
@@ -275,6 +308,14 @@ export default {
       return comprobantes.value.filter(c => !c.sincronizado).length
     })
 
+    // Detectar cambios en la conexión
+    const updateOnlineStatus = () => {
+      isOnline.value = navigator.onLine
+      if (isOnline.value) {
+        console.log('Conexión restaurada')
+      }
+    }
+
     const goBack = () => {
       router.push('/dashboard')
     }
@@ -295,10 +336,19 @@ export default {
         const storedComprobantes = localStorage.getItem('comprobantes')
         if (storedComprobantes) {
           comprobantes.value = JSON.parse(storedComprobantes)
-        } else {
-          const comprobantesResponse = await fetch('/data/comprobantes.json')
-          comprobantes.value = await comprobantesResponse.json()
-          localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
+        }
+
+        // Si está online, intentar cargar desde Airtable
+        if (isOnline.value) {
+          try {
+            const airtableComprobantes = await AirtableService.getComprobantes()
+            // Merge con comprobantes locales no sincronizados
+            const localNoSync = comprobantes.value.filter(c => !c.sincronizado)
+            comprobantes.value = [...airtableComprobantes, ...localNoSync]
+            localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
+          } catch (error) {
+            console.error('Error cargando desde Airtable:', error)
+          }
         }
       } catch (error) {
         console.error('Error cargando datos:', error)
@@ -330,7 +380,7 @@ export default {
       facturaParte3.value = ''
     }
 
-    const saveComprobante = () => {
+    const saveComprobante = async () => {
       errorMessage.value = ''
 
       // Validar RUC
@@ -355,21 +405,43 @@ export default {
         return
       }
 
-      // Crear nuevo comprobante
-      const newId = comprobantes.value.length > 0 
-        ? Math.max(...comprobantes.value.map(c => c.id)) + 1 
-        : 1
-      
-      comprobantes.value.push({ 
-        ...form.value, 
-        id: newId,
-        frenteId: parseInt(form.value.frenteId)
-      })
+      try {
+        let nuevoComprobante
 
-      // Guardar en localStorage
-      localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
-      
-      closeModal()
+        if (isOnline.value) {
+          // Si está online, intentar guardar directamente en Airtable
+          try {
+            nuevoComprobante = await AirtableService.createComprobante({
+              ...form.value,
+              frenteId: parseInt(form.value.frenteId)
+            })
+          } catch (error) {
+            console.error('Error guardando en Airtable:', error)
+            // Si falla, guardar localmente
+            nuevoComprobante = {
+              ...form.value,
+              id: `local_${Date.now()}`,
+              frenteId: parseInt(form.value.frenteId),
+              sincronizado: false
+            }
+          }
+        } else {
+          // Si está offline, guardar localmente
+          nuevoComprobante = {
+            ...form.value,
+            id: `local_${Date.now()}`,
+            frenteId: parseInt(form.value.frenteId),
+            sincronizado: false
+          }
+        }
+
+        comprobantes.value.push(nuevoComprobante)
+        localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
+        closeModal()
+      } catch (error) {
+        errorMessage.value = 'Error al guardar el comprobante'
+        console.error(error)
+      }
     }
 
     const confirmDelete = (comprobante) => {
@@ -377,19 +449,67 @@ export default {
       showDeleteModal.value = true
     }
 
-    const deleteComprobante = () => {
-      comprobantes.value = comprobantes.value.filter(c => c.id !== comprobanteToDelete.value.id)
+    const deleteComprobante = async () => {
+      const comprobante = comprobanteToDelete.value
+
+      // Si está sincronizado y online, eliminar de Airtable
+      if (comprobante.sincronizado && isOnline.value && !comprobante.id.startsWith('local_')) {
+        try {
+          await AirtableService.deleteComprobante(comprobante.id)
+        } catch (error) {
+          console.error('Error eliminando de Airtable:', error)
+        }
+      }
+
+      // Eliminar localmente
+      comprobantes.value = comprobantes.value.filter(c => c.id !== comprobante.id)
       localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
       showDeleteModal.value = false
       comprobanteToDelete.value = null
     }
 
-    const sincronizar = () => {
-      comprobantes.value = comprobantes.value.map(c => ({
-        ...c,
-        sincronizado: true
-      }))
-      localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
+    const sincronizar = async () => {
+      if (!isOnline.value) {
+        alert('No hay conexión a internet')
+        return
+      }
+
+      syncing.value = true
+      const noSincronizados = comprobantes.value.filter(c => !c.sincronizado)
+
+      try {
+        const results = await AirtableService.syncComprobantes(noSincronizados)
+        
+        // Actualizar comprobantes sincronizados
+        results.success.forEach(synced => {
+          const index = comprobantes.value.findIndex(c => 
+            c.id === synced.id || 
+            (c.numeroFactura === synced.numeroFactura && !c.sincronizado)
+          )
+          if (index !== -1) {
+            comprobantes.value[index] = synced
+          }
+        })
+
+        // Eliminar comprobantes locales que se sincronizaron
+        comprobantes.value = comprobantes.value.filter(c => 
+          !c.id.startsWith('local_') || !c.sincronizado
+        )
+
+        localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
+
+        // Mostrar resultado
+        syncResult.value = {
+          success: results.success.length,
+          errors: results.errors.length
+        }
+        showSyncResult.value = true
+      } catch (error) {
+        console.error('Error sincronizando:', error)
+        alert('Error al sincronizar los comprobantes')
+      } finally {
+        syncing.value = false
+      }
     }
 
     const getFrenteNombre = (frenteId) => {
@@ -415,6 +535,13 @@ export default {
 
     onMounted(() => {
       loadData()
+      window.addEventListener('online', updateOnlineStatus)
+      window.addEventListener('offline', updateOnlineStatus)
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('online', updateOnlineStatus)
+      window.removeEventListener('offline', updateOnlineStatus)
     })
 
     return {
@@ -422,9 +549,13 @@ export default {
       frentes,
       showModal,
       showDeleteModal,
+      showSyncResult,
       comprobanteToDelete,
       errorMessage,
       filtroFrente,
+      isOnline,
+      syncing,
+      syncResult,
       form,
       today,
       frentesActivos,
