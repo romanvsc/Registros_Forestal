@@ -30,4 +30,3 @@ tailwind.config.backup.js
 
 # Generated manifest/service workers (en caso de PWA)
 manifest.webmanifest
-service-worker.js
