@@ -31,7 +31,7 @@
       </div>
 
       <!-- Filtro por Frente -->
-      <div class="mb-6">
+      <div v-if="currentUser?.rol === 'admin'" class="mb-6">
         <label class="block text-sm font-semibold text-gray-700 mb-2">Filtrar por Frente</label>
         <select v-model="filtroFrente" class="input-field">
           <option value="">Todos los frentes</option>
@@ -137,12 +137,15 @@
 
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-2">Frente *</label>
-            <select v-model="form.frenteId" required class="input-field">
+            <select v-model="form.frenteId" required class="input-field" :disabled="currentUser?.rol !== 'admin'">
               <option value="">Seleccione un frente</option>
               <option v-for="frente in frentesActivos" :key="frente.id" :value="frente.id">
                 {{ frente.nombre }}
               </option>
             </select>
+            <p v-if="currentUser?.rol !== 'admin'" class="text-xs text-gray-500 mt-1">
+              Asignado a: {{ getFrenteNombre(currentUser?.frenteId) }}
+            </p>
           </div>
 
           <div>
@@ -278,6 +281,7 @@ export default {
     const isOnline = ref(navigator.onLine)
     const syncing = ref(false)
     const syncResult = ref({ success: 0, errors: 0 })
+    const currentUser = ref(null)
     
     const facturaParte1 = ref('')
     const facturaParte2 = ref('')
@@ -296,12 +300,31 @@ export default {
     const today = computed(() => new Date().toISOString().split('T')[0])
 
     const frentesActivos = computed(() => {
-      return frentes.value.filter(f => f.activo)
+      // Si es admin, mostrar todos los frentes
+      if (currentUser.value?.rol === 'admin') {
+        return frentes.value.filter(f => f.activo)
+      }
+      // Si es usuario regular, solo mostrar su frente
+      if (currentUser.value?.frenteId) {
+        return frentes.value.filter(f => f.activo && f.id === currentUser.value.frenteId)
+      }
+      return []
     })
 
     const comprobantesFiltrados = computed(() => {
-      if (!filtroFrente.value) return comprobantes.value
-      return comprobantes.value.filter(c => c.frenteId === filtroFrente.value)
+      let filtered = comprobantes.value
+
+      // Si es usuario regular (no admin), filtrar solo comprobantes de su frente
+      if (currentUser.value?.rol !== 'admin' && currentUser.value?.frenteId) {
+        filtered = filtered.filter(c => c.frenteId === currentUser.value.frenteId)
+      }
+
+      // Aplicar filtro adicional si se seleccionó un frente específico
+      if (filtroFrente.value) {
+        filtered = filtered.filter(c => c.frenteId === filtroFrente.value)
+      }
+
+      return filtered
     })
 
     const comprobantesNoSincronizados = computed(() => {
@@ -322,6 +345,10 @@ export default {
 
     const loadData = async () => {
       try {
+        // Obtener usuario actual
+        const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
+        currentUser.value = user
+
         // Cargar frentes
         const storedFrente = localStorage.getItem('frentes')
         if (storedFrente) {
@@ -330,6 +357,11 @@ export default {
           const frentesResponse = await fetch('/data/frentes.json')
           frentes.value = await frentesResponse.json()
           localStorage.setItem('frentes', JSON.stringify(frentes.value))
+        }
+
+        // Si es usuario regular, preseleccionar su frente en el formulario
+        if (user.rol !== 'admin' && user.frenteId) {
+          form.value.frenteId = user.frenteId
         }
 
         // Cargar comprobantes
@@ -556,6 +588,7 @@ export default {
       isOnline,
       syncing,
       syncResult,
+      currentUser,
       form,
       today,
       frentesActivos,

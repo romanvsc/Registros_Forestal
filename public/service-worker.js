@@ -48,6 +48,19 @@ self.addEventListener('activate', event => {
 
 // Estrategia: Network First, Cache Fallback
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url)
+  
+  // NO cachear peticiones a Airtable
+  if (url.hostname.includes('airtable.com') || url.hostname.includes('api.airtable.com')) {
+    // Dejar que la petición pase sin intervención del service worker
+    return
+  }
+
+  // NO cachear peticiones POST, PUT, DELETE (solo GET)
+  if (event.request.method !== 'GET') {
+    return
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(response => {

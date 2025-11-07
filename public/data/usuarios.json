@@ -4,13 +4,23 @@
     "username": "admin",
     "password": "admin123",
     "nombre": "Administrador",
-    "rol": "admin"
+    "rol": "admin",
+    "frenteId": null
   },
   {
     "id": 2,
     "username": "usuario",
     "password": "usuario123",
     "nombre": "Usuario Demo",
-    "rol": "usuario"
+    "rol": "usuario",
+    "frenteId": 1
+  },
+  {
+    "id": 3,
+    "username": "usuario2",
+    "password": "usuario123",
+    "nombre": "Usuario Frente Sur",
+    "rol": "usuario",
+    "frenteId": 2
   }
 ]

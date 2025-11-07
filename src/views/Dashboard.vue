@@ -101,14 +101,22 @@ export default {
 
     const loadStats = async () => {
       try {
+        const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
+
         // Cargar frentes
         const frentesResponse = await fetch('/data/frentes.json')
         const frentes = await frentesResponse.json()
         stats.value.totalFrente = frentes.filter(f => f.activo).length
 
-        // Cargar comprobantes
-        const comprobantesResponse = await fetch('/data/comprobantes.json')
-        const comprobantes = await comprobantesResponse.json()
+        // Cargar comprobantes desde localStorage (incluye los de Airtable y locales)
+        const storedComprobantes = localStorage.getItem('comprobantes')
+        let comprobantes = storedComprobantes ? JSON.parse(storedComprobantes) : []
+
+        // Si es usuario regular, filtrar solo comprobantes de su frente
+        if (user.rol !== 'admin' && user.frenteId) {
+          comprobantes = comprobantes.filter(c => c.frenteId === user.frenteId)
+        }
+
         stats.value.totalComprobantes = comprobantes.length
         stats.value.sinSincronizar = comprobantes.filter(c => !c.sincronizado).length
       } catch (error) {
