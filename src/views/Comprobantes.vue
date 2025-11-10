@@ -354,7 +354,7 @@ export default {
         if (storedFrente) {
           frentes.value = JSON.parse(storedFrente)
         } else {
-          const frentesResponse = await fetch('/data/frentes.json')
+          const frentesResponse = await fetch('./data/frentes.json')
           frentes.value = await frentesResponse.json()
           localStorage.setItem('frentes', JSON.stringify(frentes.value))
         }

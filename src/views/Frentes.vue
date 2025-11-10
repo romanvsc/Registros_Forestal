@@ -166,7 +166,7 @@ export default {
 
     const loadFrente = async () => {
       try {
-        const response = await fetch('/data/frentes.json')
+        const response = await fetch('./data/frentes.json')
         frentes.value = await response.json()
       } catch (error) {
         console.error('Error cargando frentes:', error)

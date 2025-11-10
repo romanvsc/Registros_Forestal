@@ -86,7 +86,7 @@ export default {
 
       try {
         // Cargar usuarios desde el archivo JSON
-        const response = await fetch('/data/usuarios.json')
+        const response = await fetch('./data/usuarios.json')
         const usuarios = await response.json()
 
         // Buscar usuario

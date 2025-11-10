@@ -104,7 +104,7 @@ export default {
         const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
 
         // Cargar frentes
-        const frentesResponse = await fetch('/data/frentes.json')
+        const frentesResponse = await fetch('./data/frentes.json')
         const frentes = await frentesResponse.json()
         stats.value.totalFrente = frentes.filter(f => f.activo).length
 

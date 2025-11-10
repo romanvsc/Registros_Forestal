@@ -1,19 +1,8 @@
 const CACHE_NAME = 'registros-forestal-v1'
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/src/main.js',
-  '/src/App.vue',
-  '/src/assets/main.css',
-  '/src/router.js',
-  '/src/views/Login.vue',
-  '/src/views/Dashboard.vue',
-  '/src/views/Frentes.vue',
-  '/src/views/Comprobantes.vue',
-  '/data/usuarios.json',
-  '/data/frentes.json',
-  '/data/comprobantes.json',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json'
 ]
 
 // Instalación del Service Worker
