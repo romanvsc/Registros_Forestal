@@ -43,9 +43,9 @@
 
       <!-- Lista de Comprobantes -->
       <div v-if="comprobantesFiltrados.length > 0" class="space-y-4">
-        <div v-for="comprobante in comprobantesFiltrados" :key="comprobante.id" class="card">
+        <div v-for="comprobante in comprobantesFiltrados" :key="comprobante.id" class="card hover:shadow-lg transition-shadow cursor-pointer">
           <div class="flex items-start justify-between">
-            <div class="flex-1">
+            <div class="flex-1" @click="viewComprobante(comprobante)">
               <div class="flex items-center space-x-2 mb-2">
                 <h3 class="text-lg font-bold text-gray-800">{{ comprobante.numeroFactura }}</h3>
                 <span
@@ -55,11 +55,10 @@
                   Sin sincronizar
                 </span>
               </div>
-              <p class="text-gray-600 text-sm">{{ comprobante.detalle }}</p>
+              <p class="text-gray-600 text-sm line-clamp-2">{{ comprobante.detalle }}</p>
               <div class="mt-2 space-y-1 text-sm text-gray-600">
                 <p><strong>Fecha:</strong> {{ formatDate(comprobante.fecha) }}</p>
                 <p><strong>Frente:</strong> {{ getFrenteNombre(comprobante.frenteId) }}</p>
-                <p><strong>RUC:</strong> {{ comprobante.ruc }}</p>
                 <p class="text-lg font-bold text-malachite-100">$ {{ formatMonto(comprobante.monto) }}</p>
               </div>
             </div>
@@ -258,6 +257,74 @@
         </button>
       </div>
     </div>
+
+    <!-- Modal Detalle Comprobante -->
+    <div v-if="showDetailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 my-8">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-bold text-gray-800">Detalle del Comprobante</h2>
+          <button @click="showDetailModal = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <div v-if="selectedComprobante" class="space-y-4">
+          <!-- Número de Factura -->
+          <div class="border-b pb-3">
+            <p class="text-sm text-gray-500 mb-1">Número de Factura</p>
+            <p class="text-xl font-bold text-gray-800">{{ selectedComprobante.numeroFactura }}</p>
+            <span
+              v-if="!selectedComprobante.sincronizado"
+              class="inline-block bg-golden-fizz-50 text-golden-fizz-100 px-3 py-1 rounded-full text-xs font-semibold mt-2"
+            >
+              Sin sincronizar
+            </span>
+          </div>
+
+          <!-- Detalle -->
+          <div class="border-b pb-3">
+            <p class="text-sm text-gray-500 mb-1">Detalle</p>
+            <p class="text-gray-800">{{ selectedComprobante.detalle }}</p>
+          </div>
+
+          <!-- Fecha -->
+          <div class="border-b pb-3">
+            <p class="text-sm text-gray-500 mb-1">Fecha</p>
+            <p class="text-gray-800">{{ formatDate(selectedComprobante.fecha) }}</p>
+          </div>
+
+          <!-- Frente -->
+          <div class="border-b pb-3">
+            <p class="text-sm text-gray-500 mb-1">Frente</p>
+            <p class="text-gray-800">{{ getFrenteNombre(selectedComprobante.frenteId) }}</p>
+          </div>
+
+          <!-- RUC -->
+          <div class="border-b pb-3">
+            <p class="text-sm text-gray-500 mb-1">RUC</p>
+            <p class="text-gray-800">{{ selectedComprobante.ruc }}</p>
+          </div>
+
+          <!-- Monto -->
+          <div class="bg-malachite-100 bg-opacity-10 rounded-lg p-4">
+            <p class="text-sm text-gray-600 mb-1">Monto Total</p>
+            <p class="text-3xl font-bold text-malachite-100">$ {{ formatMonto(selectedComprobante.monto) }}</p>
+          </div>
+
+          <!-- Usuario (si está disponible) -->
+          <div v-if="selectedComprobante.usuario" class="border-t pt-3">
+            <p class="text-sm text-gray-500 mb-1">Creado por</p>
+            <p class="text-gray-800">{{ selectedComprobante.usuario }}</p>
+          </div>
+        </div>
+
+        <button @click="showDetailModal = false" class="btn-primary w-full mt-6">
+          Cerrar
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -275,7 +342,9 @@ export default {
     const showModal = ref(false)
     const showDeleteModal = ref(false)
     const showSyncResult = ref(false)
+    const showDetailModal = ref(false)
     const comprobanteToDelete = ref(null)
+    const selectedComprobante = ref(null)
     const errorMessage = ref('')
     const filtroFrente = ref('')
     const isOnline = ref(navigator.onLine)
@@ -575,6 +644,11 @@ export default {
       showDeleteModal.value = true
     }
 
+    const viewComprobante = (comprobante) => {
+      selectedComprobante.value = comprobante
+      showDetailModal.value = true
+    }
+
     const deleteComprobante = async () => {
       const comprobante = comprobanteToDelete.value
 
@@ -662,7 +736,9 @@ export default {
       showModal,
       showDeleteModal,
       showSyncResult,
+      showDetailModal,
       comprobanteToDelete,
+      selectedComprobante,
       errorMessage,
       filtroFrente,
       isOnline,
@@ -683,6 +759,7 @@ export default {
       onBlurFactura,
       closeModal,
       saveComprobante,
+      viewComprobante,
       confirmDelete,
       deleteComprobante,
       sincronizar,
