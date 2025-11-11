@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Limpiar Caché - Registros Forestal</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #22c55e;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #16a34a;
+    }
+    .danger {
+      background: #ef4444;
+    }
+    .danger:hover {
+      background: #dc2626;
+    }
+    .info {
+      background: #3b82f6;
+      color: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    .success {
+      background: #10b981;
+      color: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 15px 0;
+    }
+    pre {
+      background: #f3f4f6;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧹 Limpiar Caché Local</h1>
+    
+    <div class="info">
+      <strong>ℹ️ Información:</strong><br>
+      Esta herramienta te permite limpiar los datos guardados localmente en tu navegador.
+    </div>
+
+    <h3>Estado actual del caché:</h3>
+    <pre id="status">Cargando...</pre>
+
+    <button onclick="mostrarComprobantes()">📋 Ver Comprobantes</button>
+    <button onclick="limpiarComprobantes()" class="danger">🗑️ Limpiar Solo Comprobantes</button>
+    <button onclick="limpiarTodo()" class="danger">⚠️ Limpiar Todo el Caché</button>
+
+    <div id="resultado"></div>
+  </div>
+
+  <script>
+    function actualizarEstado() {
+      const comprobantes = localStorage.getItem('comprobantes')
+      const frentes = localStorage.getItem('frentes')
+      const currentUser = localStorage.getItem('currentUser')
+      const isAuthenticated = localStorage.getItem('isAuthenticated')
+
+      let html = ''
+      if (comprobantes) {
+        const comp = JSON.parse(comprobantes)
+        html += `Comprobantes: ${comp.length} registros\n`
+        const noSync = comp.filter(c => !c.sincronizado)
+        html += `- No sincronizados: ${noSync.length}\n`
+        html += `- Sincronizados: ${comp.length - noSync.length}\n\n`
+      } else {
+        html += 'Comprobantes: No hay datos\n\n'
+      }
+
+      if (currentUser) {
+        const user = JSON.parse(currentUser)
+        html += `Usuario actual: ${user.nombre} (${user.rol})\n`
+      }
+
+      html += `Autenticado: ${isAuthenticated || 'No'}\n`
+      html += `Frentes: ${frentes ? 'Cargados' : 'No hay datos'}`
+
+      document.getElementById('status').textContent = html
+    }
+
+    function mostrarComprobantes() {
+      const comprobantes = localStorage.getItem('comprobantes')
+      if (!comprobantes) {
+        alert('No hay comprobantes guardados')
+        return
+      }
+
+      const comp = JSON.parse(comprobantes)
+      let html = '<div class="info"><strong>Comprobantes guardados:</strong><br><br>'
+      
+      comp.forEach((c, i) => {
+        html += `${i + 1}. ${c.numeroFactura || 'Sin número'} - ${c.detalle || 'Sin detalle'}`
+        html += ` - Sincronizado: ${c.sincronizado ? 'Sí' : 'No'}<br>`
+      })
+
+      html += '</div>'
+      document.getElementById('resultado').innerHTML = html
+    }
+
+    function limpiarComprobantes() {
+      if (confirm('¿Estás seguro de que deseas eliminar TODOS los comprobantes locales?\n\n⚠️ Los comprobantes no sincronizados se perderán.')) {
+        localStorage.removeItem('comprobantes')
+        document.getElementById('resultado').innerHTML = 
+          '<div class="success">✅ Comprobantes eliminados. Recarga la página de comprobantes para cargar desde Airtable.</div>'
+        actualizarEstado()
+      }
+    }
+
+    function limpiarTodo() {
+      if (confirm('⚠️ ADVERTENCIA: Esto eliminará TODOS los datos locales incluyendo:\n\n- Comprobantes\n- Sesión actual\n- Frentes\n\n¿Estás seguro?')) {
+        localStorage.clear()
+        document.getElementById('resultado').innerHTML = 
+          '<div class="success">✅ Caché completamente limpiado. Cierra sesión y vuelve a iniciar.</div>'
+        actualizarEstado()
+      }
+    }
+
+    // Actualizar estado al cargar
+    actualizarEstado()
+  </script>
+</body>
+</html>

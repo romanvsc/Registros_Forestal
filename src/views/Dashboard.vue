@@ -59,7 +59,7 @@
       </div>
 
       <!-- Stats Section -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div v-if="isAdmin" class="card">
           <p class="text-gray-600 text-sm mb-1">Total Frentes</p>
           <p class="text-3xl font-bold text-malachite-100">{{ stats.totalFrente }}</p>
@@ -67,6 +67,10 @@
         <div class="card">
           <p class="text-gray-600 text-sm mb-1">Total Comprobantes</p>
           <p class="text-3xl font-bold text-malachite-100">{{ stats.totalComprobantes }}</p>
+        </div>
+        <div class="card">
+          <p class="text-gray-600 text-sm mb-1">Gastado Este Mes</p>
+          <p class="text-3xl font-bold text-blue-600">$ {{ formatMonto(stats.gastoMesActual) }}</p>
         </div>
         <div class="card">
           <p class="text-gray-600 text-sm mb-1">Sin Sincronizar</p>
@@ -80,6 +84,7 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import AirtableService from '../services/airtable.js'
 
 export default {
   name: 'DashboardView',
@@ -90,6 +95,7 @@ export default {
     const stats = ref({
       totalFrente: 0,
       totalComprobantes: 0,
+      gastoMesActual: 0,
       sinSincronizar: 0
     })
 
@@ -99,26 +105,71 @@ export default {
       router.push('/login')
     }
 
+    const formatMonto = (monto) => {
+      return parseFloat(monto || 0).toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+    }
+
     const loadStats = async () => {
       try {
         const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
+        const isOnline = navigator.onLine
 
         // Cargar frentes
         const frentesResponse = await fetch('./data/frentes.json')
         const frentes = await frentesResponse.json()
         stats.value.totalFrente = frentes.filter(f => f.activo).length
 
-        // Cargar comprobantes desde localStorage (incluye los de Airtable y locales)
-        const storedComprobantes = localStorage.getItem('comprobantes')
-        let comprobantes = storedComprobantes ? JSON.parse(storedComprobantes) : []
+        // Cargar comprobantes
+        let comprobantes = []
 
-        // Si es usuario regular, filtrar solo comprobantes de su frente
-        if (user.rol !== 'admin' && user.frenteId) {
-          comprobantes = comprobantes.filter(c => c.frenteId === user.frenteId)
+        if (isOnline) {
+          try {
+            // Obtener comprobantes de Airtable (ya filtrados por usuario)
+            const userName = user.nombre || null
+            comprobantes = user.rol === 'admin' 
+              ? await AirtableService.getComprobantes()
+              : await AirtableService.getComprobantes(userName)
+            
+            // Agregar comprobantes locales no sincronizados
+            const storedComprobantes = localStorage.getItem('comprobantes')
+            const localComprobantes = storedComprobantes ? JSON.parse(storedComprobantes) : []
+            const localNoSync = localComprobantes.filter(c => !c.sincronizado)
+            
+            comprobantes = [...comprobantes, ...localNoSync]
+          } catch (error) {
+            console.error('Error cargando desde Airtable:', error)
+            // Si falla, usar localStorage
+            const storedComprobantes = localStorage.getItem('comprobantes')
+            comprobantes = storedComprobantes ? JSON.parse(storedComprobantes) : []
+          }
+        } else {
+          // Sin conexión, usar localStorage
+          const storedComprobantes = localStorage.getItem('comprobantes')
+          comprobantes = storedComprobantes ? JSON.parse(storedComprobantes) : []
         }
 
+        // Calcular estadísticas
         stats.value.totalComprobantes = comprobantes.length
         stats.value.sinSincronizar = comprobantes.filter(c => !c.sincronizado).length
+
+        // Calcular gasto del mes actual
+        const hoy = new Date()
+        const mesActual = hoy.getMonth()
+        const añoActual = hoy.getFullYear()
+
+        const comprobantesDelMes = comprobantes.filter(c => {
+          const fechaComprobante = new Date(c.fecha + 'T00:00:00')
+          return fechaComprobante.getMonth() === mesActual && 
+                 fechaComprobante.getFullYear() === añoActual
+        })
+
+        stats.value.gastoMesActual = comprobantesDelMes.reduce((total, c) => {
+          return total + (parseFloat(c.monto) || 0)
+        }, 0)
+
       } catch (error) {
         console.error('Error cargando estadísticas:', error)
       }
@@ -135,7 +186,8 @@ export default {
       userName,
       isAdmin,
       stats,
-      logout
+      logout,
+      formatMonto
     }
   }
 }

@@ -314,15 +314,13 @@ export default {
     const comprobantesFiltrados = computed(() => {
       let filtered = comprobantes.value
 
-      // Si es usuario regular (no admin), filtrar solo comprobantes de su frente
-      if (currentUser.value?.rol !== 'admin' && currentUser.value?.frenteId) {
-        filtered = filtered.filter(c => c.frenteId === currentUser.value.frenteId)
-      }
-
-      // Aplicar filtro adicional si se seleccionó un frente específico
-      if (filtroFrente.value) {
+      // Si es admin y seleccionó un frente específico, filtrar por ese frente
+      if (currentUser.value?.rol === 'admin' && filtroFrente.value) {
         filtered = filtered.filter(c => c.frenteId === filtroFrente.value)
       }
+
+      // Para usuarios regulares, los comprobantes ya vienen filtrados desde Airtable
+      // No necesitamos filtrar por frente aquí
 
       return filtered
     })
@@ -364,22 +362,41 @@ export default {
           form.value.frenteId = user.frenteId
         }
 
-        // Cargar comprobantes
-        const storedComprobantes = localStorage.getItem('comprobantes')
-        if (storedComprobantes) {
-          comprobantes.value = JSON.parse(storedComprobantes)
-        }
-
-        // Si está online, intentar cargar desde Airtable
+        // Si está online, cargar desde Airtable
         if (isOnline.value) {
           try {
-            const airtableComprobantes = await AirtableService.getComprobantes()
-            // Merge con comprobantes locales no sincronizados
-            const localNoSync = comprobantes.value.filter(c => !c.sincronizado)
+            // Obtener el nombre del usuario para filtrar
+            const userName = user.nombre || null
+            
+            // Si es admin, traer todos los comprobantes (sin filtro)
+            // Si es usuario regular, filtrar por su nombre
+            const airtableComprobantes = user.rol === 'admin' 
+              ? await AirtableService.getComprobantes()
+              : await AirtableService.getComprobantes(userName)
+            
+            // Solo mantener los comprobantes locales que NO están sincronizados
+            const storedComprobantes = localStorage.getItem('comprobantes')
+            const localComprobantes = storedComprobantes ? JSON.parse(storedComprobantes) : []
+            const localNoSync = localComprobantes.filter(c => !c.sincronizado)
+            
+            // Combinar: comprobantes de Airtable + locales no sincronizados
             comprobantes.value = [...airtableComprobantes, ...localNoSync]
+            
+            // Actualizar el caché con los datos de Airtable
             localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
           } catch (error) {
             console.error('Error cargando desde Airtable:', error)
+            // Si falla Airtable, cargar desde caché local
+            const storedComprobantes = localStorage.getItem('comprobantes')
+            if (storedComprobantes) {
+              comprobantes.value = JSON.parse(storedComprobantes)
+            }
+          }
+        } else {
+          // Sin conexión: cargar solo desde caché local
+          const storedComprobantes = localStorage.getItem('comprobantes')
+          if (storedComprobantes) {
+            comprobantes.value = JSON.parse(storedComprobantes)
           }
         }
       } catch (error) {
@@ -447,6 +464,11 @@ export default {
               ...form.value,
               frenteId: parseInt(form.value.frenteId)
             })
+            
+            // Si se guardó exitosamente en Airtable, recargar datos
+            await loadData()
+            closeModal()
+            return
           } catch (error) {
             console.error('Error guardando en Airtable:', error)
             // Si falla, guardar localmente
@@ -512,30 +534,15 @@ export default {
       try {
         const results = await AirtableService.syncComprobantes(noSincronizados)
         
-        // Actualizar comprobantes sincronizados
-        results.success.forEach(synced => {
-          const index = comprobantes.value.findIndex(c => 
-            c.id === synced.id || 
-            (c.numeroFactura === synced.numeroFactura && !c.sincronizado)
-          )
-          if (index !== -1) {
-            comprobantes.value[index] = synced
-          }
-        })
-
-        // Eliminar comprobantes locales que se sincronizaron
-        comprobantes.value = comprobantes.value.filter(c => 
-          !c.id.startsWith('local_') || !c.sincronizado
-        )
-
-        localStorage.setItem('comprobantes', JSON.stringify(comprobantes.value))
-
         // Mostrar resultado
         syncResult.value = {
           success: results.success.length,
           errors: results.errors.length
         }
         showSyncResult.value = true
+
+        // Recargar datos desde Airtable para evitar duplicados
+        await loadData()
       } catch (error) {
         console.error('Error sincronizando:', error)
         alert('Error al sincronizar los comprobantes')

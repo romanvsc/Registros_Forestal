@@ -11,9 +11,17 @@ class AirtableService {
     }
   }
 
-  async getComprobantes() {
+  async getComprobantes(userName = null) {
     try {
-      const response = await fetch(this.baseUrl, {
+      let url = this.baseUrl
+      
+      // Si se proporciona un usuario, filtrar por ese usuario en Airtable
+      if (userName) {
+        const filterFormula = `{Usuario}='${userName}'`
+        url += `?filterByFormula=${encodeURIComponent(filterFormula)}`
+      }
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: this.headers
       })
@@ -71,6 +79,7 @@ class AirtableService {
       }
 
       const data = await response.json()
+      console.log('Comprobante creado en Airtable:', data)
       return {
         id: data.id,
         fecha: comprobante.fecha,
