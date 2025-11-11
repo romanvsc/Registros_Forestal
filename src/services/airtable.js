@@ -26,16 +26,15 @@ class AirtableService {
       
       // Transformar los datos de Airtable al formato de la app
       return data.records.map(record => ({
-        id: record.id,
-        fecha: record.fields.Fecha || '',
-        detalle: record.fields.Detalle || '',
-        frenteId: 0, // No existe en Airtable por ahora
-        ruc: '', // No existe en Airtable por ahora
-        numeroFactura: record.fields.Factura || '',
-        monto: record.fields.Salida || 0,
-        usuario: record.fields.Usuario || '',
-        entrada: record.fields.Entrada || 0,
-        sincronizado: true
+        Fecha: record.fields.Fecha || '',
+        Detalle: record.fields.Detalle || '',
+        FrenteID: 0, // No existe en Airtable por ahora
+        RUC: '', // No existe en Airtable por ahora
+        NumeroFactura: record.fields.Factura || '',
+        Monto: record.fields.Salida || 0,
+        Usuario: record.fields.Usuario || '',
+        Entrada: record.fields.Entrada || 0,
+        Sincronizado: true
       }))
     } catch (error) {
       console.error('Error obteniendo comprobantes:', error)
@@ -71,6 +70,7 @@ class AirtableService {
       }
 
       const data = await response.json()
+      console.log('Comprobante creado en Airtable:', data)
       return {
         id: data.id,
         fecha: comprobante.fecha,
