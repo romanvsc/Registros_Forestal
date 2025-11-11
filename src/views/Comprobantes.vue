@@ -137,30 +137,27 @@
 
           <div>
             <label class="block text-sm font-semibold text-gray-700 mb-2">Frente *</label>
-            <select v-model="form.frenteId" required class="input-field" :disabled="currentUser?.rol !== 'admin'">
+            <select v-model="form.frenteId" required class="input-field">
               <option value="">Seleccione un frente</option>
               <option v-for="frente in frentesActivos" :key="frente.id" :value="frente.id">
                 {{ frente.nombre }}
               </option>
             </select>
             <p v-if="currentUser?.rol !== 'admin'" class="text-xs text-gray-500 mt-1">
-              Asignado a: {{ getFrenteNombre(currentUser?.frenteId) }}
             </p>
           </div>
 
           <div>
-            <label class="block text-sm font-semibold text-gray-700 mb-2">RUC (CUIT) *</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">RUC *</label>
             <input
               v-model="form.ruc"
               type="text"
               required
-              pattern="[0-9]{11}"
-              maxlength="11"
               class="input-field"
-              placeholder="20123456789"
+              placeholder="12345678-9"
               @input="validateRuc"
             />
-            <p class="text-xs text-gray-500 mt-1">11 dígitos numéricos</p>
+            <p class="text-xs text-gray-500 mt-1">Formato: 8-10 dígitos, guión, 1 dígito (ej: 12345678-9)</p>
           </div>
 
           <div>
@@ -175,6 +172,7 @@
                 class="input-field w-20"
                 placeholder="001"
                 @input="validateFactura"
+                @blur="onBlurFactura(1, 3)"
               />
               <span class="flex items-center text-gray-500">-</span>
               <input
@@ -186,6 +184,7 @@
                 class="input-field w-20"
                 placeholder="001"
                 @input="validateFactura"
+                @blur="onBlurFactura(2, 3)"
               />
               <span class="flex items-center text-gray-500">-</span>
               <input
@@ -197,6 +196,7 @@
                 class="input-field flex-1"
                 placeholder="00000001"
                 @input="validateFactura"
+                @blur="onBlurFactura(3, 8)"
               />
             </div>
             <p class="text-xs text-gray-500 mt-1">Formato: XXX-XXX-XXXXXXXX</p>
@@ -346,6 +346,7 @@ export default {
         // Obtener usuario actual
         const user = JSON.parse(localStorage.getItem('currentUser') || '{}')
         currentUser.value = user
+        console.log('Usuario actual:', user)
 
         // Cargar frentes
         const storedFrente = localStorage.getItem('frentes')
@@ -356,6 +357,8 @@ export default {
           frentes.value = await frentesResponse.json()
           localStorage.setItem('frentes', JSON.stringify(frentes.value))
         }
+        console.log('Frentes cargados:', frentes.value)
+        console.log('Frentes activos:', frentesActivos.value)
 
         // Si es usuario regular, preseleccionar su frente en el formulario
         if (user.rol !== 'admin' && user.frenteId) {
@@ -405,20 +408,82 @@ export default {
     }
 
     const validateRuc = (e) => {
-      e.target.value = e.target.value.replace(/[^0-9]/g, '')
+      // Eliminar cualquier caracter que no sea número o guión
+      let value = e.target.value.replace(/[^0-9-]/g, '')
+      
+      // Asegurar que solo haya un guión y esté en la posición correcta
+      const parts = value.split('-')
+      if (parts.length > 2) {
+        // Si hay más de un guión, mantener solo el primero
+        value = parts[0] + '-' + parts.slice(1).join('')
+      }
+      
+      // Limitar la parte antes del guión a máximo 10 dígitos
+      if (parts[0] && parts[0].length > 10) {
+        parts[0] = parts[0].substring(0, 10)
+        value = parts.join('-')
+      }
+      
+      // Limitar la parte después del guión a 1 dígito
+      if (parts[1] && parts[1].length > 1) {
+        parts[1] = parts[1].substring(0, 1)
+        value = parts.join('-')
+      }
+      
+      e.target.value = value
+      form.value.ruc = value
     }
 
     const validateFactura = (e) => {
-      e.target.value = e.target.value.replace(/[^0-9]/g, '')
+      // Eliminar caracteres no numéricos
+      let value = e.target.value.replace(/[^0-9]/g, '')
+      
+      // Determinar la longitud máxima según el campo
+      let maxLength
+      if (e.target === document.activeElement) {
+        const placeholder = e.target.placeholder
+        if (placeholder === '001') {
+          maxLength = 3
+        } else if (placeholder === '00000001') {
+          maxLength = 8
+        }
+      }
+      
+      // Aplicar la longitud máxima
+      if (maxLength && value.length > maxLength) {
+        value = value.substring(0, maxLength)
+      }
+      
+      e.target.value = value
+    }
+    
+    const padFacturaParte = (parte, length) => {
+      return parte.padStart(length, '0')
+    }
+    
+    const onBlurFactura = (parte, length) => {
+      if (parte === 1 && facturaParte1.value) {
+        facturaParte1.value = padFacturaParte(facturaParte1.value, length)
+      } else if (parte === 2 && facturaParte2.value) {
+        facturaParte2.value = padFacturaParte(facturaParte2.value, length)
+      } else if (parte === 3 && facturaParte3.value) {
+        facturaParte3.value = padFacturaParte(facturaParte3.value, length)
+      }
     }
 
     const closeModal = () => {
       showModal.value = false
       errorMessage.value = ''
+      
+      // Determinar el frenteId según el rol del usuario
+      const defaultFrenteId = currentUser.value?.rol !== 'admin' && currentUser.value?.frenteId 
+        ? currentUser.value.frenteId 
+        : ''
+      
       form.value = {
         fecha: new Date().toISOString().split('T')[0],
         detalle: '',
-        frenteId: '',
+        frenteId: defaultFrenteId,
         ruc: '',
         numeroFactura: '',
         monto: 0,
@@ -432,9 +497,16 @@ export default {
     const saveComprobante = async () => {
       errorMessage.value = ''
 
-      // Validar RUC
-      if (form.value.ruc.length !== 11) {
-        errorMessage.value = 'El RUC debe tener 11 dígitos'
+      // Validar que se haya seleccionado un frente
+      if (!form.value.frenteId) {
+        errorMessage.value = 'Debe seleccionar un frente'
+        return
+      }
+
+      // Validar RUC (formato: 8-10 dígitos - 1 dígito)
+      const rucPattern = /^[0-9]{8,10}-[0-9]$/
+      if (!rucPattern.test(form.value.ruc)) {
+        errorMessage.value = 'El RUC debe tener el formato correcto: 8-10 dígitos, guión, 1 dígito (ej: 12345678-9)'
         return
       }
 
@@ -552,7 +624,8 @@ export default {
     }
 
     const getFrenteNombre = (frenteId) => {
-      const frente = frentes.value.find(f => f.id === frenteId)
+      // Convertir ambos valores a números para hacer la comparación
+      const frente = frentes.value.find(f => parseInt(f.id) === parseInt(frenteId))
       return frente ? frente.nombre : 'Sin frente'
     }
 
@@ -607,6 +680,7 @@ export default {
       goBack,
       validateRuc,
       validateFactura,
+      onBlurFactura,
       closeModal,
       saveComprobante,
       confirmDelete,

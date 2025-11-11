@@ -37,8 +37,8 @@ class AirtableService {
         id: record.id,
         fecha: record.fields.Fecha || '',
         detalle: record.fields.Detalle || '',
-        frenteId: 0, // No existe en Airtable por ahora
-        ruc: '', // No existe en Airtable por ahora
+        frenteId: record.fields.FrenteId || record.fields.Frente || 0,
+        ruc: record.fields.RUC || record.fields.Ruc || '',
         numeroFactura: record.fields.Factura || '',
         monto: record.fields.Salida || 0,
         usuario: record.fields.Usuario || '',
@@ -66,6 +66,8 @@ class AirtableService {
             Detalle: comprobante.detalle,
             Usuario: userName,
             Factura: comprobante.numeroFactura,
+            FrenteId: parseInt(comprobante.frenteId),
+            RUC: comprobante.ruc,
             Entrada: 0, // Por defecto 0
             Salida: parseFloat(comprobante.monto)
           }

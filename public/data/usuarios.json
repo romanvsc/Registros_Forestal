@@ -22,5 +22,13 @@
     "nombre": "Usuario Frente Sur",
     "rol": "usuario",
     "frenteId": 2
+  },
+  {
+    "id": 4,
+    "username": "usuario3",
+    "password": "usuario123",
+    "nombre": "Usuario Frente Sur",
+    "rol": "usuario",
+    "frenteId": 2
   }
 ]
