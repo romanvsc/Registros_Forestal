@@ -11,9 +11,17 @@ class AirtableService {
     }
   }
 
-  async getComprobantes() {
+  async getComprobantes(userName = null) {
     try {
-      const response = await fetch(this.baseUrl, {
+      let url = this.baseUrl
+      
+      // Si se proporciona un usuario, filtrar por ese usuario en Airtable
+      if (userName) {
+        const filterFormula = `{Usuario}='${userName}'`
+        url += `?filterByFormula=${encodeURIComponent(filterFormula)}`
+      }
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: this.headers
       })
@@ -26,15 +34,16 @@ class AirtableService {
       
       // Transformar los datos de Airtable al formato de la app
       return data.records.map(record => ({
-        Fecha: record.fields.Fecha || '',
-        Detalle: record.fields.Detalle || '',
-        FrenteID: 0, // No existe en Airtable por ahora
-        RUC: '', // No existe en Airtable por ahora
-        NumeroFactura: record.fields.Factura || '',
-        Monto: record.fields.Salida || 0,
-        Usuario: record.fields.Usuario || '',
-        Entrada: record.fields.Entrada || 0,
-        Sincronizado: true
+        id: record.id,
+        fecha: record.fields.Fecha || '',
+        detalle: record.fields.Detalle || '',
+        frenteId: 0, // No existe en Airtable por ahora
+        ruc: '', // No existe en Airtable por ahora
+        numeroFactura: record.fields.Factura || '',
+        monto: record.fields.Salida || 0,
+        usuario: record.fields.Usuario || '',
+        entrada: record.fields.Entrada || 0,
+        sincronizado: true
       }))
     } catch (error) {
       console.error('Error obteniendo comprobantes:', error)
