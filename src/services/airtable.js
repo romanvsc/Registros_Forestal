@@ -55,7 +55,7 @@ class AirtableService {
     try {
       // Obtener el usuario actual
       const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
-      const userName = currentUser.nombre || 'Usuario'
+      const userName = currentUser.username || 'Usuario'
 
       const response = await fetch(this.baseUrl, {
         method: 'POST',
