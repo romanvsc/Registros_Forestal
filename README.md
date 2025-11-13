@@ -113,7 +113,7 @@ Registros_Forestal/
   - Fecha (con validación de fecha máxima actual)
   - Detalle descriptivo
   - Frente asociado (selección de frentes activos)
-  - RUC/CUIT (11 dígitos numéricos)
+  - RUC (máximo 10 dígitos numéricos)
   - Número de factura (formato XXX-XXX-XXXXXXXX)
   - Monto (validación de número positivo)
 - Filtrado de comprobantes por frente

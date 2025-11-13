@@ -153,10 +153,10 @@
               type="text"
               required
               class="input-field"
-              placeholder="12345678-9"
+              placeholder="1234567890"
               @input="validateRuc"
             />
-            <p class="text-xs text-gray-500 mt-1">Formato: 8-10 dígitos, guión, 1 dígito (ej: 12345678-9)</p>
+            <p class="text-xs text-gray-500 mt-1">Máximo 10 dígitos numéricos</p>
           </div>
 
           <div>
@@ -477,26 +477,12 @@ export default {
     }
 
     const validateRuc = (e) => {
-      // Eliminar cualquier caracter que no sea número o guión
-      let value = e.target.value.replace(/[^0-9-]/g, '')
+      // Eliminar cualquier caracter que no sea número
+      let value = e.target.value.replace(/[^0-9]/g, '')
       
-      // Asegurar que solo haya un guión y esté en la posición correcta
-      const parts = value.split('-')
-      if (parts.length > 2) {
-        // Si hay más de un guión, mantener solo el primero
-        value = parts[0] + '-' + parts.slice(1).join('')
-      }
-      
-      // Limitar la parte antes del guión a máximo 10 dígitos
-      if (parts[0] && parts[0].length > 10) {
-        parts[0] = parts[0].substring(0, 10)
-        value = parts.join('-')
-      }
-      
-      // Limitar la parte después del guión a 1 dígito
-      if (parts[1] && parts[1].length > 1) {
-        parts[1] = parts[1].substring(0, 1)
-        value = parts.join('-')
+      // Limitar a máximo 10 dígitos
+      if (value.length > 10) {
+        value = value.substring(0, 10)
       }
       
       e.target.value = value
@@ -572,10 +558,10 @@ export default {
         return
       }
 
-      // Validar RUC (formato: 8-10 dígitos - 1 dígito)
-      const rucPattern = /^[0-9]{8,10}-[0-9]$/
+      // Validar RUC (máximo 10 dígitos numéricos)
+      const rucPattern = /^[0-9]{1,10}$/
       if (!rucPattern.test(form.value.ruc)) {
-        errorMessage.value = 'El RUC debe tener el formato correcto: 8-10 dígitos, guión, 1 dígito (ej: 12345678-9)'
+        errorMessage.value = 'El RUC debe contener entre 1 y 10 dígitos numéricos'
         return
       }
 
