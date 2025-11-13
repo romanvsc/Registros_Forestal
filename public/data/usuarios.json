@@ -9,26 +9,34 @@
   },
   {
     "id": 2,
-    "username": "usuario",
-    "password": "usuario123",
-    "nombre": "Usuario Demo",
+    "username": "PABLO",
+    "password": "olbap",
+    "nombre": "PABLO",
     "rol": "usuario",
-    "frenteId": 1
+    "frenteId": null
   },
   {
     "id": 3,
-    "username": "usuario2",
-    "password": "usuario123",
-    "nombre": "Usuario Frente Sur",
+    "username": "JUAN",
+    "password": "nauj",
+    "nombre": "JUAN",
     "rol": "usuario",
-    "frenteId": 2
+    "frenteId": null
   },
   {
     "id": 4,
-    "username": "usuario3",
-    "password": "usuario123",
-    "nombre": "Usuario Frente Sur 2",
+    "username": "MIGUEL",
+    "password": "leugim",
+    "nombre": "MIGUEL",
     "rol": "usuario",
-    "frenteId": 2
+    "frenteId": null
+  },
+  {
+    "id": 5,
+    "username": "MONICA",
+    "password": "acinom",
+    "nombre": "MONICA",
+    "rol": "usuario",
+    "frenteId": null
   }
 ]
